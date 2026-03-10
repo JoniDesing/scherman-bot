@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCHERMAN BOT · Datos Reales BYMA</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c0f;
+    --surface: #0d1318;
+    --surface2: #111820;
+    --surface3: #16202a;
+    --border: #1e2d3d;
+    --accent: #00d4ff;
+    --accent2: #00ff9d;
+    --red: #ff3d5a;
+    --green: #00ff9d;
+    --warn: #ffd700;
+    --text: #e8f4f8;
+    --text2: #7a9bb5;
+    --text3: #4a6580;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Space Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ---- CONFIG BANNER ---- */
+  #config-banner {
+    background: rgba(255,215,0,0.1);
+    border-bottom: 1px solid rgba(255,215,0,0.3);
+    padding: 0.6rem 2rem;
+    font-size: 0.7rem;
+    color: var(--warn);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+    z-index: 10;
+  }
+  #config-banner input {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,215,0,0.4);
+    border-radius: 3px;
+    padding: 0.25rem 0.5rem;
+    color: var(--warn);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    width: 280px;
+  }
+  #config-banner button {
+    background: var(--warn);
+    color: var(--bg);
+    border: none;
+    border-radius: 3px;
+    padding: 0.25rem 0.75rem;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.65rem;
+    cursor: pointer;
+  }
+
+  /* ---- HEADER ---- */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(8,12,15,0.97);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 58px;
+  }
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .logo-dot { width: 8px; height: 8px; background: var(--accent2); border-radius: 50%; animation: blink 2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .status-pill {
+    display: flex; align-items: center; gap: 0.4rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+  }
+  .status-ok { background: rgba(0,255,157,0.1); color: var(--green); border: 1px solid rgba(0,255,157,0.2); }
+  .status-err { background: rgba(255,61,90,0.1); color: var(--red); border: 1px solid rgba(255,61,90,0.2); }
+  .status-loading { background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: blink 1s infinite; }
+
+  /* ---- NAV ---- */
+  nav {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    position: sticky; top: 58px; z-index: 99;
+  }
+  .tab {
+    padding: 0.85rem 1.4rem;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab:hover { color: var(--text2); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ---- TICKER ---- */
+  .ticker {
+    overflow: hidden;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0.35rem 0;
+    font-size: 0.65rem;
+  }
+  .ticker-inner { display: inline-flex; gap: 2.5rem; animation: scroll 25s linear infinite; white-space: nowrap; padding-left: 100%; }
+  @keyframes scroll { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+  .ticker-item { display: flex; gap: 0.4rem; align-items: center; }
+  .t-sym { color: var(--text); font-weight: 700; }
+  .t-price { color: var(--text2); }
+  .up { color: var(--green); }
+  .down { color: var(--red); }
+  .neutral { color: var(--warn); }
+
+  /* ---- MAIN ---- */
+  main { position: relative; z-index: 1; padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; }
+  .section { display: none; }
+  .section.active { display: block; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ---- CARDS ---- */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 1.25rem; margin-bottom: 1rem; }
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.68rem; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text2); margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .card-title::before { content:''; width:3px; height:11px; background:var(--accent); border-radius:2px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 1.25rem; }
+
+  /* ---- METRIC ---- */
+  .metric {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1.1rem; position: relative; overflow: hidden;
+  }
+  .metric::after {
+    content:''; position:absolute; top:0; left:0; right:0; height:1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.3;
+  }
+  .metric-label { font-size: 0.62rem; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.4rem; }
+  .metric-value { font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 800; line-height: 1; }
+  .metric-sub { font-size: 0.62rem; color: var(--text2); margin-top: 0.25rem; }
+
+  /* ---- TABLE ---- */
+  .table { width: 100%; border-collapse: collapse; font-size: 0.73rem; }
+  .table th {
+    text-align: left; padding: 0.55rem 0.75rem;
+    font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text3); border-bottom: 1px solid var(--border);
+    font-family: 'Syne', sans-serif; font-weight: 700;
+  }
+  .table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid rgba(30,45,61,0.4); }
+  .table tr:hover td { background: var(--surface2); }
+  .table tr:last-child td { border-bottom: none; }
+
+  .badge { display:inline-block; padding:0.12rem 0.45rem; border-radius:2px; font-size:0.58rem; font-weight:700; letter-spacing:0.05em; }
+  .badge-buy  { background:rgba(0,255,157,0.12); color:var(--green); }
+  .badge-sell { background:rgba(255,61,90,0.12); color:var(--red); }
+  .badge-hold { background:rgba(255,215,0,0.12); color:var(--warn); }
+
+  /* ---- PORTFOLIO FORM ---- */
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
+  .form-group { display: flex; flex-direction: column; gap: 0.3rem; }
+  .form-label { font-size: 0.62rem; color: var(--text2); letter-spacing: 0.08em; text-transform: uppercase; }
+  input, select {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 3px; padding: 0.5rem 0.7rem;
+    color: var(--text); font-family: 'Space Mono', monospace;
+    font-size: 0.72rem; outline: none; transition: border-color 0.2s; width: 100%;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+
+  .btn { padding:0.55rem 1.1rem; border:none; border-radius:3px; font-family:'Syne',sans-serif; font-weight:700; font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; transition:all 0.2s; }
+  .btn-primary { background:var(--accent); color:var(--bg); }
+  .btn-primary:hover { background:#00b8d9; }
+  .btn-outline { background:transparent; color:var(--accent); border:1px solid var(--accent); }
+  .btn-outline:hover { background:rgba(0,212,255,0.08); }
+  .btn-sm { padding:0.2rem 0.5rem; font-size:0.58rem; }
+  .btn-danger { background:rgba(255,61,90,0.15); color:var(--red); border:1px solid rgba(255,61,90,0.3); }
+
+  /* ---- PROGRESS ---- */
+  .prog-bar { height:3px; background:var(--surface3); border-radius:2px; overflow:hidden; margin-top:0.2rem; }
+  .prog-fill { height:100%; border-radius:2px; transition:width 0.5s; }
+
+  /* ---- ALERT ITEMS ---- */
+  .alert-item {
+    display:flex; align-items:flex-start; gap:0.85rem;
+    padding:0.85rem; background:var(--surface2);
+    border:1px solid var(--border); border-radius:4px;
+    margin-bottom:0.7rem; transition:border-color 0.2s;
+  }
+  .alert-item:hover { border-color: var(--accent); }
+  .alert-icon { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.85rem; flex-shrink:0; }
+  .ai-buy { background:rgba(0,255,157,0.12); }
+  .ai-sell { background:rgba(255,61,90,0.12); }
+  .ai-warn { background:rgba(255,215,0,0.12); }
+  .ai-info { background:rgba(0,212,255,0.12); }
+  .alert-title { font-family:'Syne',sans-serif; font-weight:700; font-size:0.78rem; margin-bottom:0.15rem; }
+  .alert-desc { font-size:0.65rem; color:var(--text2); line-height:1.5; }
+  .alert-time { font-size:0.58rem; color:var(--text3); margin-top:0.25rem; }
+
+  /* ---- BACKTEST ---- */
+  .bt-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:0.75rem; margin-bottom:1.25rem; }
+  .bt-metric { background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:0.9rem; text-align:center; }
+  .bt-value { font-family:'Syne',sans-serif; font-size:1.2rem; font-weight:800; margin-bottom:0.2rem; }
+  .bt-label { font-size:0.58rem; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; }
+
+  .chart-box { position:relative; height:190px; }
+
+  /* ---- SPINNER ---- */
+  .spinner {
+    display:inline-block; width:16px; height:16px;
+    border:2px solid var(--border); border-top-color:var(--accent);
+    border-radius:50%; animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  .data-source-note {
+    font-size: 0.62rem; color: var(--text3);
+    padding: 0.5rem 0.75rem;
+    background: var(--surface2);
+    border-radius: 3px;
+    border-left: 2px solid var(--text3);
+    margin-bottom: 1rem;
+  }
+
+  @media (max-width: 768px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    .bt-grid { grid-template-columns: repeat(2,1fr); }
+    main { padding: 1rem; }
+    #config-banner { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+    #config-banner input { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- CONFIG BANNER -->
+<div id="config-banner">
+  ⚙️ URL del backend Railway:
+  <input type="text" id="api-url" placeholder="https://tu-proyecto.up.railway.app" />
+  <button onclick="saveApiUrl()">Guardar y Conectar</button>
+  <span id="conn-status" style="margin-left:0.5rem"></span>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    SCHERMAN BOT
+  </div>
+  <div id="status-pill" class="status-pill status-loading">
+    <div class="dot"></div>
+    Conectando...
+  </div>
+</header>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-inner" id="ticker-inner">
+    <span class="ticker-item"><span class="t-sym">Cargando datos BYMA...</span></span>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="tab active" onclick="switchTab('mercado', this)">📈 Mercado</div>
+  <div class="tab" onclick="switchTab('portfolio', this)">💼 Mi Portfolio</div>
+  <div class="tab" onclick="switchTab('alertas', this)">🔔 Alertas</div>
+  <div class="tab" onclick="switchTab('backtest', this)">⚗️ Backtest</div>
+</nav>
+
+<main>
+
+  <!-- ===== MERCADO ===== -->
+  <section id="mercado" class="section active">
+
+    <div class="data-source-note">
+      📡 Datos: Open BYMA Data · 20 minutos de delay · Actualización automática cada 5 min
+    </div>
+
+    <div class="grid-4" id="market-metrics">
+      <div class="metric"><div class="metric-label">Último Update</div><div class="metric-value neutral" id="m-time">--:--</div><div class="metric-sub">Horario Argentina</div></div>
+      <div class="metric"><div class="metric-label">CEDEARs cargados</div><div class="metric-value up" id="m-cedears">0</div><div class="metric-sub">de BYMA</div></div>
+      <div class="metric"><div class="metric-label">Acciones locales</div><div class="metric-value up" id="m-acciones">0</div><div class="metric-sub">MERVAL</div></div>
+      <div class="metric"><div class="metric-label">Estado API</div><div class="metric-value" id="m-api">⏳</div><div class="metric-sub" id="m-api-sub">Esperando...</div></div>
+    </div>
+
+    <div class="grid-2">
+      <!-- CEDEARS -->
+      <div class="card">
+        <div class="card-title">CEDEARs en tiempo real</div>
+        <div id="cedears-loading" style="text-align:center;padding:2rem;color:var(--text3)">
+          <div class="spinner"></div><div style="margin-top:0.5rem;font-size:0.7rem">Cargando...</div>
+        </div>
+        <table class="table" id="cedears-table" style="display:none">
+          <thead><tr>
+            <th>Símbolo</th><th>Precio (ARS)</th><th>Var%</th><th>Señal</th>
+          </tr></thead>
+          <tbody id="cedears-body"></tbody>
+        </table>
+      </div>
+
+      <!-- ACCIONES LOCALES -->
+      <div class="card">
+        <div class="card-title">Acciones Argentinas (MERVAL)</div>
+        <div id="acciones-loading" style="text-align:center;padding:2rem;color:var(--text3)">
+          <div class="spinner"></div><div style="margin-top:0.5rem;font-size:0.7rem">Cargando...</div>
+        </div>
+        <table class="table" id="acciones-table" style="display:none">
+          <thead><tr>
+            <th>Símbolo</th><th>Precio (ARS)</th><th>Var%</th><th>Señal</th>
+          </tr></thead>
+          <tbody id="acciones-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- BONOS -->
+    <div class="card">
+      <div class="card-title">Bonos Soberanos</div>
+      <div id="bonos-loading" style="text-align:center;padding:1.5rem;color:var(--text3)">
+        <div class="spinner"></div>
+      </div>
+      <table class="table" id="bonos-table" style="display:none">
+        <thead><tr><th>Bono</th><th>Precio</th><th>Var%</th></tr></thead>
+        <tbody id="bonos-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== PORTFOLIO ===== -->
+  <section id="portfolio" class="section">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800">Mi Portfolio</div>
+        <div style="font-size:0.68rem;color:var(--text3);margin-top:0.2rem">Seguimiento basado en precios reales BYMA</div>
+      </div>
+      <button class="btn btn-primary" onclick="showAddForm()">+ Agregar Posición</button>
+    </div>
+
+    <!-- ADD FORM -->
+    <div id="add-form" class="card" style="display:none;margin-bottom:1rem">
+      <div class="card-title">Nueva Posición</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Símbolo</label>
+          <input type="text" id="pf-symbol" placeholder="Ej: SPY, GGAL, ON Pampa" style="text-transform:uppercase">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select id="pf-type">
+            <option>CEDEAR</option><option>Acción</option><option>ON</option><option>FCI</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Precio de Entrada (ARS)</label>
+          <input type="number" id="pf-price" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cantidad / Monto ARS</label>
+          <input type="number" id="pf-amount" placeholder="0">
+        </div>
+      </div>
+      <div style="display:flex;gap:0.75rem">
+        <button class="btn btn-primary" onclick="addPosition()">Agregar</button>
+        <button class="btn btn-outline" onclick="hideAddForm()">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- METRICS -->
+    <div class="grid-4" style="margin-bottom:1.25rem">
+      <div class="metric"><div class="metric-label">Capital Total</div><div class="metric-value up" id="pf-total">$0</div></div>
+      <div class="metric"><div class="metric-label">P&L Total</div><div class="metric-value" id="pf-pnl">$0</div></div>
+      <div class="metric"><div class="metric-label">Posiciones</div><div class="metric-value up" id="pf-count">0</div></div>
+      <div class="metric"><div class="metric-label">Scherman Score</div><div class="metric-value" id="pf-score">0/100</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Posiciones</div>
+      <div id="pf-empty" style="text-align:center;padding:2rem;color:var(--text3);font-size:0.75rem">
+        No tenés posiciones. Agregá la primera arriba. ↑
+      </div>
+      <table class="table" id="pf-table" style="display:none">
+        <thead><tr>
+          <th>Activo</th><th>Tipo</th><th>Precio Entrada</th><th>Precio Actual</th><th>Monto</th><th>P&L</th><th>% Port.</th><th>Señal</th><th></th>
+        </tr></thead>
+        <tbody id="pf-body"></tbody>
+      </table>
+    </div>
+
+    <!-- SCHERMAN RULES -->
+    <div class="card">
+      <div class="card-title">Verificación Reglas Scherman</div>
+      <div id="rules-list"></div>
+    </div>
+  </section>
+
+  <!-- ===== ALERTAS ===== -->
+  <section id="alertas" class="section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800">Alertas Inteligentes</div>
+        <div style="font-size:0.68rem;color:var(--text3);margin-top:0.2rem">Señales generadas con datos reales BYMA</div>
+      </div>
+      <button class="btn btn-outline" onclick="refreshAlerts()">↻ Actualizar señales</button>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <div id="alerts-container"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Crear Alerta Manual</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Activo</label>
+            <input type="text" id="al-asset" placeholder="Ej: SPY" style="text-transform:uppercase">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tipo</label>
+            <select id="al-type">
+              <option>Precio objetivo</option>
+              <option>Stop Loss</option>
+              <option>Variación diaria %</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Valor</label>
+            <input type="number" id="al-value" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Acción</label>
+            <select id="al-action">
+              <option>COMPRAR</option><option>VENDER</option><option>REVISAR</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0.75rem">
+          <label class="form-label">Nota</label>
+          <input type="text" id="al-note" placeholder="Opcional">
+        </div>
+        <button class="btn btn-primary" onclick="createAlert()" style="width:100%">Crear Alerta</button>
+
+        <!-- SL CALC -->
+        <div style="margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--border)">
+          <div class="card-title" style="margin-bottom:0.75rem">Calculadora Stop Loss</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Precio entrada</label>
+              <input type="number" id="sl-in" placeholder="$" oninput="calcSL()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">% Stop Loss</label>
+              <input type="number" id="sl-pct" value="8" oninput="calcSL()">
+            </div>
+          </div>
+          <div id="sl-out" style="font-size:0.72rem;color:var(--text2)"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== BACKTEST ===== -->
+  <section id="backtest" class="section">
+    <div style="margin-bottom:1.25rem">
+      <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800">Simulador de Estrategia</div>
+      <div style="font-size:0.68rem;color:var(--text3);margin-top:0.2rem">Backtesting cuantitativo · Principios Scherman</div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Configurar Simulación</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Capital (ARS)</label><input type="number" id="bt-cap" value="5000000"></div>
+          <div class="form-group"><label class="form-label">Período</label><select id="bt-per"><option value="6">6 meses</option><option value="12" selected>12 meses</option><option value="24">24 meses</option><option value="36">36 meses</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Estrategia</label>
+            <select id="bt-strat">
+              <option value="scherman">Scherman Descorrelacionada</option>
+              <option value="renta_fija">Solo Renta Fija (ONs)</option>
+              <option value="renta_var">Solo Renta Variable</option>
+              <option value="6040">60/40 Clásico</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Stop Loss %</label><input type="number" id="bt-sl" value="8"></div>
+        </div>
+        <button class="btn btn-primary" onclick="runBacktest()" style="width:100%;margin-top:0.25rem">▶ Ejecutar Simulación</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Composición de Estrategias</div>
+        <div style="font-size:0.7rem;color:var(--text2);line-height:1.9">
+          <div style="border-left:3px solid var(--accent);padding-left:0.75rem;margin-bottom:0.75rem">
+            <strong style="color:var(--accent)">SCHERMAN</strong> · 15% FCI · 40% ONs USD · 15% SPY · 10% GLD · 10% MELI · 10% Cash
+          </div>
+          <div style="border-left:3px solid var(--green);padding-left:0.75rem;margin-bottom:0.75rem">
+            <strong style="color:var(--green)">RENTA FIJA</strong> · 100% ONs corporativas USD ~7-8% anual
+          </div>
+          <div style="border-left:3px solid var(--red);padding-left:0.75rem;margin-bottom:0.75rem">
+            <strong style="color:var(--red)">RENTA VARIABLE</strong> · 100% CEDEARs y acciones
+          </div>
+          <div style="border-left:3px solid var(--warn);padding-left:0.75rem">
+            <strong style="color:var(--warn)">60/40</strong> · 60% renta variable · 40% renta fija
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="bt-results" style="display:none">
+      <div class="bt-grid" id="bt-metrics-grid"></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Curva de Capital</div>
+          <div class="chart-box"><canvas id="bt-chart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Análisis de Riesgo</div>
+          <div id="bt-risk"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Conclusión</div>
+        <div id="bt-conclusion" style="font-size:0.73rem;color:var(--text2);line-height:1.8"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+
+// ============================================================
+// CONFIG
+// ============================================================
+let API_URL = localStorage.getItem('scherman_api_url') || '';
+let marketData = { cedears: [], acciones: [], bonos: [], timestamp: null };
+let portfolio = JSON.parse(localStorage.getItem('scherman_portfolio') || '[]');
+let userAlerts = JSON.parse(localStorage.getItem('scherman_alerts') || '[]');
+let charts = {};
+let refreshInterval = null;
+
+const TYPE_COLORS = { CEDEAR:'#ffd700', ON:'#00ff9d', Acción:'#ff6b35', FCI:'#00d4ff' };
+
+// ============================================================
+// INIT
+// ============================================================
+window.onload = () => {
+  // Load saved API URL
+  if (API_URL) {
+    document.getElementById('api-url').value = API_URL;
+    connectToApi();
+  }
+  renderPortfolio();
+  renderAlerts();
+  renderRules();
+};
+
+// ============================================================
+// API CONNECTION
+// ============================================================
+function saveApiUrl() {
+  API_URL = document.getElementById('api-url').value.trim().replace(/\/$/, '');
+  localStorage.setItem('scherman_api_url', API_URL);
+  connectToApi();
+}
+
+async function connectToApi() {
+  if (!API_URL) return;
+  setStatus('loading', 'Conectando...');
+
+  try {
+    const r = await fetch(`${API_URL}/api/health`, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    setStatus('ok', 'BYMA Conectado');
+    document.getElementById('conn-status').innerHTML = '<span style="color:var(--green)">✓ Conectado</span>';
+
+    // Start fetching
+    fetchAllData();
+    if (refreshInterval) clearInterval(refreshInterval);
+    refreshInterval = setInterval(fetchAllData, 5 * 60 * 1000); // cada 5 min
+
+  } catch (e) {
+    setStatus('err', 'Sin conexión al backend');
+    document.getElementById('conn-status').innerHTML = `<span style="color:var(--red)">✗ ${e.message}</span>`;
+  }
+}
+
+async function fetchAllData() {
+  if (!API_URL) return;
+  try {
+    const [cotResp, bonosResp] = await Promise.all([
+      fetch(`${API_URL}/api/cotizaciones`),
+      fetch(`${API_URL}/api/bonos`)
+    ]);
+    const cot = await cotResp.json();
+    const bon = await bonosResp.json();
+
+    marketData.cedears = cot.cedears || [];
+    marketData.acciones = cot.acciones || [];
+    marketData.bonos = bon.bonos || [];
+    marketData.timestamp = cot.timestamp;
+
+    renderMarket();
+    updatePortfolioPrices();
+    generateAutoAlerts();
+
+  } catch(e) {
+    setStatus('err', 'Error al cargar datos');
+    console.error(e);
+  }
+}
+
+function setStatus(type, text) {
+  const el = document.getElementById('status-pill');
+  el.className = 'status-pill status-' + type;
+  el.innerHTML = `<div class="dot"></div>${text}`;
+
+  document.getElementById('m-api').textContent = type === 'ok' ? '✅' : type === 'err' ? '❌' : '⏳';
+  document.getElementById('m-api-sub').textContent = text;
+}
+
+// ============================================================
+// MARKET RENDER
+// ============================================================
+function renderMarket() {
+  const { cedears, acciones, bonos, timestamp } = marketData;
+
+  document.getElementById('m-time').textContent = timestamp || '--:--';
+  document.getElementById('m-cedears').textContent = cedears.length;
+  document.getElementById('m-acciones').textContent = acciones.length;
+
+  renderTable('cedears-body', cedears, 'cedears-table', 'cedears-loading');
+  renderTable('acciones-body', acciones, 'acciones-table', 'acciones-loading');
+  renderBonos();
+  buildTicker();
+}
+
+function renderTable(bodyId, data, tableId, loadingId) {
+  document.getElementById(loadingId).style.display = 'none';
+  document.getElementById(tableId).style.display = data.length ? 'table' : 'none';
+
+  if (!data.length) {
+    document.getElementById(loadingId).innerHTML = '<div style="font-size:0.7rem;color:var(--text3);padding:1rem;text-align:center">Sin datos disponibles</div>';
+    document.getElementById(loadingId).style.display = 'block';
+    return;
+  }
+
+  document.getElementById(bodyId).innerHTML = data.map(item => {
+    const chg = parseFloat(item.change_pct || 0);
+    const chgCls = chg > 0 ? 'up' : chg < 0 ? 'down' : 'neutral';
+    const signal = getSignal(chg);
+    const signalBadge = `<span class="badge badge-${signal.toLowerCase()}">${signal}</span>`;
+    const price = item.price ? '$' + parseFloat(item.price).toLocaleString('es-AR', {maximumFractionDigits:2}) : '--';
+
+    return `<tr>
+      <td><strong>${item.symbol}</strong></td>
+      <td>${price}</td>
+      <td class="${chgCls} " style="font-weight:700">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</td>
+      <td>${signalBadge}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderBonos() {
+  const { bonos } = marketData;
+  document.getElementById('bonos-loading').style.display = 'none';
+  if (!bonos.length) {
+    document.getElementById('bonos-loading').innerHTML = '<div style="font-size:0.7rem;color:var(--text3);padding:1rem">Sin datos de bonos disponibles</div>';
+    document.getElementById('bonos-loading').style.display = 'block';
+    return;
+  }
+  document.getElementById('bonos-table').style.display = 'table';
+  document.getElementById('bonos-body').innerHTML = bonos.map(b => {
+    const chg = parseFloat(b.change_pct || 0);
+    const chgCls = chg > 0 ? 'up' : chg < 0 ? 'down' : 'neutral';
+    return `<tr>
+      <td><strong>${b.symbol}</strong></td>
+      <td>${b.price ? '$' + parseFloat(b.price).toLocaleString('es-AR') : '--'}</td>
+      <td class="${chgCls}" style="font-weight:700">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</td>
+    </tr>`;
+  }).join('');
+}
+
+function buildTicker() {
+  const all = [...marketData.cedears, ...marketData.acciones];
+  if (!all.length) return;
+  const doubled = [...all, ...all];
+  document.getElementById('ticker-inner').innerHTML = doubled.map(i => {
+    const chg = parseFloat(i.change_pct || 0);
+    return `<span class="ticker-item">
+      <span class="t-sym">${i.symbol}</span>
+      <span class="t-price">$${parseFloat(i.price||0).toLocaleString('es-AR',{maximumFractionDigits:0})}</span>
+      <span class="${chg >= 0 ? 'up' : 'down'}">${chg >= 0 ? '▲' : '▼'}${Math.abs(chg).toFixed(2)}%</span>
+    </span>`;
+  }).join('');
+}
+
+function getSignal(chg) {
+  if (chg > 3) return 'BUY';
+  if (chg < -5) return 'SELL';
+  return 'HOLD';
+}
+
+// ============================================================
+// PORTFOLIO
+// ============================================================
+function showAddForm() { document.getElementById('add-form').style.display = 'block'; }
+function hideAddForm() { document.getElementById('add-form').style.display = 'none'; }
+
+function addPosition() {
+  const symbol = document.getElementById('pf-symbol').value.trim().toUpperCase();
+  const type   = document.getElementById('pf-type').value;
+  const price  = parseFloat(document.getElementById('pf-price').value);
+  const amount = parseFloat(document.getElementById('pf-amount').value);
+
+  if (!symbol || !price || !amount) { alert('Completá todos los campos'); return; }
+
+  // Buscar precio actual en market data
+  const allMkt = [...marketData.cedears, ...marketData.acciones];
+  const mkt = allMkt.find(i => i.symbol === symbol);
+
+  portfolio.push({
+    symbol, type, entryPrice: price, amount,
+    currentPrice: mkt ? parseFloat(mkt.price) : price,
+    change_pct: mkt ? parseFloat(mkt.change_pct || 0) : 0,
+    addedAt: new Date().toISOString()
+  });
+
+  savePortfolio();
+  renderPortfolio();
+  hideAddForm();
+  document.getElementById('pf-symbol').value = '';
+  document.getElementById('pf-price').value = '';
+  document.getElementById('pf-amount').value = '';
+}
+
+function removePosition(i) {
+  if (!confirm('¿Eliminar posición?')) return;
+  portfolio.splice(i, 1);
+  savePortfolio();
+  renderPortfolio();
+}
+
+function savePortfolio() {
+  localStorage.setItem('scherman_portfolio', JSON.stringify(portfolio));
+}
+
+function updatePortfolioPrices() {
+  const allMkt = [...marketData.cedears, ...marketData.acciones];
+  let updated = false;
+  portfolio.forEach(p => {
+    const mkt = allMkt.find(i => i.symbol === p.symbol);
+    if (mkt) {
+      p.currentPrice = parseFloat(mkt.price);
+      p.change_pct = parseFloat(mkt.change_pct || 0);
+      updated = true;
+    }
+  });
+  if (updated) { savePortfolio(); renderPortfolio(); }
+}
+
+function renderPortfolio() {
+  const empty = document.getElementById('pf-empty');
+  const table = document.getElementById('pf-table');
+
+  if (!portfolio.length) {
+    empty.style.display = 'block';
+    table.style.display = 'none';
+    document.getElementById('pf-total').textContent = '$0';
+    document.getElementById('pf-pnl').textContent = '$0';
+    document.getElementById('pf-count').textContent = '0';
+    document.getElementById('pf-score').textContent = '0/100';
+    renderRules();
+    return;
+  }
+
+  empty.style.display = 'none';
+  table.style.display = 'table';
+
+  const total = portfolio.reduce((s, p) => s + p.amount, 0);
+  let totalPnl = 0;
+
+  document.getElementById('pf-body').innerHTML = portfolio.map((p, i) => {
+    const cur = p.currentPrice || p.entryPrice;
+    const pnlPct = ((cur - p.entryPrice) / p.entryPrice) * 100;
+    const pnlArs = p.amount * (pnlPct / 100);
+    totalPnl += pnlArs;
+    const pct = (p.amount / total * 100).toFixed(1);
+    const chg = p.change_pct || 0;
+    const signal = getSignal(chg);
+
+    // Stop loss warning
+    let slWarn = '';
+    if (pnlPct < -7) slWarn = ' 🔴';
+    else if (pnlPct < -4) slWarn = ' 🟡';
+
+    return `<tr>
+      <td><strong>${p.symbol}${slWarn}</strong></td>
+      <td style="color:var(--text3)">${p.type}</td>
+      <td>$${p.entryPrice.toLocaleString('es-AR')}</td>
+      <td style="color:${chg >= 0 ? 'var(--green)' : 'var(--red)'}">$${cur.toLocaleString('es-AR',{maximumFractionDigits:0})}</td>
+      <td>$${p.amount.toLocaleString('es-AR')}</td>
+      <td class="${pnlPct >= 0 ? 'up' : 'down'}" style="font-weight:700">
+        ${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%<br>
+        <span style="font-size:0.62rem">${pnlArs >= 0 ? '+' : ''}$${Math.round(pnlArs).toLocaleString('es-AR')}</span>
+      </td>
+      <td>
+        <div>${pct}%</div>
+        <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${TYPE_COLORS[p.type]||'#888'}"></div></div>
+      </td>
+      <td><span class="badge badge-${signal.toLowerCase()}">${signal}</span></td>
+      <td><button class="btn btn-danger btn-sm" onclick="removePosition(${i})">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('pf-total').textContent = '$' + Math.round(total).toLocaleString('es-AR');
+  const pnlEl = document.getElementById('pf-pnl');
+  pnlEl.textContent = (totalPnl >= 0 ? '+' : '') + '$' + Math.round(totalPnl).toLocaleString('es-AR');
+  pnlEl.className = 'metric-value ' + (totalPnl >= 0 ? 'up' : 'down');
+  document.getElementById('pf-count').textContent = portfolio.length;
+
+  const score = calcScore();
+  const scoreEl = document.getElementById('pf-score');
+  scoreEl.textContent = score + '/100';
+  scoreEl.className = 'metric-value ' + (score >= 70 ? 'up' : score >= 50 ? 'neutral' : 'down');
+
+  renderRules();
+}
+
+function calcScore() {
+  if (!portfolio.length) return 0;
+  let score = 0;
+  const total = portfolio.reduce((s, p) => s + p.amount, 0);
+  const maxPct = Math.max(...portfolio.map(p => p.amount / total * 100));
+  const types = new Set(portfolio.map(p => p.type)).size;
+  const hasFixed = portfolio.some(p => ['ON','FCI'].includes(p.type));
+  const hasEquity = portfolio.some(p => ['CEDEAR','Acción'].includes(p.type));
+  if (maxPct <= 15) score += 30; else if (maxPct <= 25) score += 15;
+  if (types >= 3) score += 25; else if (types >= 2) score += 12;
+  if (hasFixed && hasEquity) score += 25;
+  if (portfolio.length >= 5) score += 20;
+  return Math.min(score, 100);
+}
+
+function renderRules() {
+  const total = portfolio.reduce((s, p) => s + p.amount, 0) || 1;
+  const maxPct = portfolio.length ? Math.max(...portfolio.map(p => p.amount / total * 100)) : 0;
+  const types = new Set(portfolio.map(p => p.type)).size;
+  const hasLiq = portfolio.some(p => p.type === 'FCI');
+  const count = portfolio.length;
+
+  const rules = [
+    { ok: maxPct <= 15, warn: maxPct <= 25, label: `Posición máxima: ${maxPct.toFixed(1)}% (límite Scherman: 15%)` },
+    { ok: types >= 3, warn: types >= 2, label: `${types} tipos de activos (mín. recomendado: 3)` },
+    { ok: hasLiq, warn: false, label: 'Colchón de liquidez (FCI Money Market)' },
+    { ok: count >= 5, warn: count >= 3, label: `${count} posiciones abiertas (mín. recomendado: 5)` },
+  ];
+
+  document.getElementById('rules-list').innerHTML = rules.map(r => {
+    const cls = r.ok ? 'check-pass' : r.warn ? 'check-warn' : 'check-fail';
+    const colors = { 'check-pass': 'var(--green)', 'check-warn': 'var(--warn)', 'check-fail': 'var(--red)' };
+    const icons  = { 'check-pass': '✓', 'check-warn': '!', 'check-fail': '✗' };
+    return `<div style="display:flex;align-items:center;gap:0.75rem;padding:0.55rem 0;border-bottom:1px solid rgba(30,45,61,0.4);font-size:0.7rem;color:var(--text2)">
+      <div style="width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,0.3);border:1px solid ${colors[cls]};color:${colors[cls]};display:flex;align-items:center;justify-content:center;font-size:0.55rem;flex-shrink:0">${icons[cls]}</div>
+      ${r.label}
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// ALERTS
+// ============================================================
+function generateAutoAlerts() {
+  const auto = [];
+  const allMkt = [...marketData.cedears, ...marketData.acciones];
+
+  allMkt.forEach(item => {
+    const chg = parseFloat(item.change_pct || 0);
+    if (chg < -5) {
+      auto.push({ icon:'🔴', cls:'ai-sell', title:`${item.symbol}: Caída fuerte (-${Math.abs(chg).toFixed(1)}%)`, desc:`Posible activación de stop loss. Revisá si tenés posición en ${item.symbol}. Regla Scherman: salida al -8%.`, time:'Datos BYMA en vivo', auto: true });
+    } else if (chg > 4) {
+      auto.push({ icon:'🟢', cls:'ai-buy', title:`${item.symbol}: Momentum alcista (+${chg.toFixed(1)}%)`, desc:`Movimiento positivo significativo. Podría ser momento de tomar parciales si ya tenés ganancias.`, time:'Datos BYMA en vivo', auto: true });
+    }
+  });
+
+  // Portfolio warnings
+  portfolio.forEach(p => {
+    const pnlPct = ((p.currentPrice - p.entryPrice) / p.entryPrice) * 100;
+    if (pnlPct < -7) {
+      auto.push({ icon:'🚨', cls:'ai-sell', title:`STOP LOSS: ${p.symbol} (-${Math.abs(pnlPct).toFixed(1)}%)`, desc:`Tu posición en ${p.symbol} está cerca del límite de stop loss (8%). Revisá inmediatamente en Cocos.`, time:'Tu portfolio', auto: true });
+    }
+    if (pnlPct > 20) {
+      auto.push({ icon:'🎯', cls:'ai-buy', title:`TAKE PROFIT: ${p.symbol} (+${pnlPct.toFixed(1)}%)`, desc:`Scherman recomienda tomar el 50% de la posición al +20%. Considerá realizar ganancias parciales.`, time:'Tu portfolio', auto: true });
+    }
+  });
+
+  window._autoAlerts = auto;
+  renderAlerts();
+}
+
+function renderAlerts() {
+  const auto = window._autoAlerts || [];
+  const all = [...auto, ...userAlerts];
+
+  if (!all.length) {
+    document.getElementById('alerts-container').innerHTML = `
+      <div style="text-align:center;padding:2rem;color:var(--text3);font-size:0.75rem">
+        Sin señales activas.<br>Conectá el backend para ver alertas en tiempo real.
+      </div>`;
+    return;
+  }
+
+  document.getElementById('alerts-container').innerHTML = all.map(a => `
+    <div class="alert-item">
+      <div class="alert-icon ${a.cls}">${a.icon}</div>
+      <div style="flex:1">
+        <div class="alert-title">${a.title}</div>
+        <div class="alert-desc">${a.desc}</div>
+        <div class="alert-time">${a.time}</div>
+      </div>
+    </div>`).join('');
+}
+
+function refreshAlerts() {
+  if (API_URL) fetchAllData();
+  else generateAutoAlerts();
+}
+
+function createAlert() {
+  const asset  = document.getElementById('al-asset').value.toUpperCase();
+  const type   = document.getElementById('al-type').value;
+  const value  = document.getElementById('al-value').value;
+  const action = document.getElementById('al-action').value;
+  const note   = document.getElementById('al-note').value;
+
+  if (!asset || !value) { alert('Completá activo y valor'); return; }
+
+  const icons = { COMPRAR:'🟢', VENDER:'🔴', REVISAR:'🔵' };
+  const clss  = { COMPRAR:'ai-buy', VENDER:'ai-sell', REVISAR:'ai-info' };
+
+  userAlerts.unshift({
+    icon: icons[action], cls: clss[action],
+    title: `${asset}: ${type} · ${action}`,
+    desc: `Trigger: $${parseFloat(value).toLocaleString('es-AR')}. ${note || ''}`,
+    time: 'Alerta personal · ' + new Date().toLocaleTimeString('es-AR'),
+    auto: false
+  });
+
+  localStorage.setItem('scherman_alerts', JSON.stringify(userAlerts));
+  renderAlerts();
+  document.getElementById('al-asset').value = '';
+  document.getElementById('al-value').value = '';
+  document.getElementById('al-note').value = '';
+}
+
+function calcSL() {
+  const entry = parseFloat(document.getElementById('sl-in').value);
+  const pct   = parseFloat(document.getElementById('sl-pct').value);
+  if (!entry || !pct) return;
+  const sl = entry * (1 - pct / 100);
+  document.getElementById('sl-out').innerHTML = `
+    <div style="background:var(--surface2);padding:0.65rem;border-radius:3px;border-left:3px solid var(--red)">
+      Stop Loss: <strong style="color:var(--red)">$${sl.toFixed(2)}</strong>
+      &nbsp;·&nbsp; Pérdida máx: <strong style="color:var(--red)">$${(entry-sl).toFixed(2)} (${pct}%)</strong>
+    </div>`;
+}
+
+// ============================================================
+// BACKTEST
+// ============================================================
+function runBacktest() {
+  const capital  = parseFloat(document.getElementById('bt-cap').value) || 5000000;
+  const months   = parseInt(document.getElementById('bt-per').value);
+  const strategy = document.getElementById('bt-strat').value;
+  const sl       = parseFloat(document.getElementById('bt-sl').value) / 100;
+
+  const params = {
+    scherman:  { mu: 0.018, sigma: 0.025, sharpe: 1.8, label: 'Scherman Descorrelacionada' },
+    renta_fija:{ mu: 0.008, sigma: 0.008, sharpe: 2.1, label: 'Solo Renta Fija' },
+    renta_var: { mu: 0.028, sigma: 0.055, sharpe: 1.1, label: 'Solo Renta Variable' },
+    '6040':    { mu: 0.015, sigma: 0.030, sharpe: 1.4, label: '60/40 Clásico' },
+  }[strategy];
+
+  let val = capital, maxVal = capital, maxDD = 0, wins = 0;
+  const curve = [capital];
+  const labels = ['Inicio'];
+
+  for (let m = 1; m <= months; m++) {
+    const ret = params.mu + (Math.random() - 0.5) * params.sigma * 2;
+    const slHit = ret < -sl;
+    val *= (1 + (slHit ? -sl * 0.8 : ret));
+    maxVal = Math.max(maxVal, val);
+    maxDD = Math.max(maxDD, (maxVal - val) / maxVal);
+    if (ret > 0) wins++;
+    curve.push(Math.round(val));
+    labels.push(`M${m}`);
+  }
+
+  const totalRet = (val - capital) / capital * 100;
+  const annRet   = (Math.pow(val / capital, 12 / months) - 1) * 100;
+  const winRate  = (wins / months * 100).toFixed(0);
+
+  document.getElementById('bt-results').style.display = 'block';
+  document.getElementById('bt-results').scrollIntoView({ behavior: 'smooth' });
+
+  document.getElementById('bt-metrics-grid').innerHTML = [
+    { label: 'Capital Final', val: '$' + Math.round(val).toLocaleString('es-AR'), cls: val > capital ? 'up' : 'down' },
+    { label: 'Retorno Total', val: (totalRet >= 0 ? '+' : '') + totalRet.toFixed(1) + '%', cls: totalRet >= 0 ? 'up' : 'down' },
+    { label: 'Retorno Anual', val: (annRet >= 0 ? '+' : '') + annRet.toFixed(1) + '%', cls: annRet >= 0 ? 'up' : 'down' },
+    { label: 'Max Drawdown', val: '-' + (maxDD * 100).toFixed(1) + '%', cls: maxDD < 0.1 ? 'up' : maxDD < 0.2 ? 'neutral' : 'down' },
+    { label: 'Win Rate', val: winRate + '%', cls: winRate >= 60 ? 'up' : 'neutral' },
+  ].map(m => `<div class="bt-metric"><div class="bt-value ${m.cls}">${m.val}</div><div class="bt-label">${m.label}</div></div>`).join('');
+
+  // Chart
+  const ctx = document.getElementById('bt-chart').getContext('2d');
+  if (charts.bt) charts.bt.destroy();
+  charts.bt = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: params.label, data: curve, borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,0.05)', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 0 },
+        { label: 'Capital inicial', data: Array(curve.length).fill(capital), borderColor: 'rgba(255,215,0,0.3)', borderDash:[4,4], borderWidth:1, pointRadius:0, fill:false }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ color:'#7a9bb5', font:{ family:'Space Mono', size:9 } } } },
+      scales:{
+        x:{ grid:{ color:'rgba(30,45,61,0.5)' }, ticks:{ color:'#4a6580', font:{ size:8 }, maxTicksLimit:12 } },
+        y:{ grid:{ color:'rgba(30,45,61,0.5)' }, ticks:{ color:'#4a6580', font:{ size:8 }, callback: v => '$' + (v/1000000).toFixed(2) + 'M' } }
+      }
+    }
+  });
+
+  document.getElementById('bt-risk').innerHTML = `
+    <div style="font-size:0.72rem;color:var(--text2);line-height:2">
+      <div style="margin-bottom:0.75rem">
+        <div style="font-size:0.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em">Nivel de Riesgo</div>
+        <div style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700">${maxDD < 0.1 ? '🟢 BAJO' : maxDD < 0.2 ? '🟡 MODERADO' : '🔴 ALTO'}</div>
+      </div>
+      <div>📉 Drawdown máx: <strong style="color:var(--red)">${(maxDD*100).toFixed(1)}%</strong></div>
+      <div>📈 Meses positivos: <strong style="color:var(--green)">${wins}/${months}</strong></div>
+      <div>⚡ Sharpe estimado: <strong style="color:var(--accent)">${params.sharpe.toFixed(1)}</strong></div>
+    </div>`;
+
+  document.getElementById('bt-conclusion').innerHTML = `
+    La estrategia <strong style="color:var(--accent)">${params.label}</strong> en ${months} meses generó un retorno 
+    <strong style="color:${totalRet >= 0 ? 'var(--green)' : 'var(--red)'}">${totalRet >= 0 ? '+' : ''}${totalRet.toFixed(1)}%</strong> sobre $${capital.toLocaleString('es-AR')} iniciales.<br><br>
+    ${maxDD < 0.15 ? '✅ Drawdown controlado — consistente con los principios de gestión de riesgo de Scherman.' : '⚠️ Drawdown elevado — revisá el tamaño de posiciones y asegurate de tener stop loss activos.'}<br><br>
+    💡 <strong>Nota:</strong> Las curvas de capital usan modelado estadístico. Los datos de mercado reales de BYMA están en la pestaña Mercado.`;
+}
+
+// ============================================================
+// UI
+// ============================================================
+function switchTab(id, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+
+</script>
+</body>
+</html>
