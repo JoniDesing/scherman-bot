@@ -6,30 +6,27 @@ Consulta Open BYMA Data y sirve precios reales al frontend.
 import requests
 import json
 import time
+import urllib3
 from flask import Flask, jsonify
 from flask_cors import CORS
 from datetime import datetime
 
+# BYMA usa certificado SSL con cadena incompleta en algunos servidores
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 app = Flask(__name__)
-CORS(app)  # Permite que el frontend en GitHub Pages acceda
+CORS(app)
 
-# Cache para no martillar la API de BYMA en cada request
-cache = {
-    "data": None,
-    "last_update": 0,
-    "ttl": 300  # actualizar cada 5 minutos
-}
+cache = {"data": None, "last_update": 0, "ttl": 300}
 
-# Los activos que queremos monitorear
 ACTIVOS = {
     "cedears": ["SPY", "QQQ", "MELI", "GLD", "AAPL", "MSFT", "GOOGL"],
     "acciones": ["GGAL", "YPFD", "BMA", "TXAR", "ALUA", "TECO2", "PAMP"],
 }
 
 BYMA_BASE = "https://open.bymadata.com.ar/vanoms-be-core/rest/api/bymadata/free"
-
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "Accept": "application/json, text/plain, */*",
     "Accept-Language": "es-AR,es;q=0.9",
     "Referer": "https://open.bymadata.com.ar/",
@@ -37,196 +34,127 @@ HEADERS = {
     "Content-Type": "application/json",
 }
 
-def fetch_byma_post(endpoint, body=None):
-    """POST a Open BYMA Data (algunos endpoints requieren POST)."""
+def fetch_get(endpoint):
     try:
-        url = f"{BYMA_BASE}/{endpoint}"
-        r = requests.post(url, headers=HEADERS, json=body or {}, timeout=15)
+        r = requests.get(f"{BYMA_BASE}/{endpoint}", headers=HEADERS, timeout=15, verify=False)
         r.raise_for_status()
         return r.json()
     except Exception as e:
-        print(f"Error BYMA POST {endpoint}: {e}")
+        print(f"Error GET {endpoint}: {e}")
         return None
 
-def fetch_byma_get(endpoint, params=None):
-    """GET a Open BYMA Data."""
+def fetch_post(endpoint, body=None):
     try:
-        url = f"{BYMA_BASE}/{endpoint}"
-        r = requests.get(url, headers=HEADERS, params=params, timeout=15)
+        r = requests.post(f"{BYMA_BASE}/{endpoint}", headers=HEADERS, json=body or {}, timeout=15, verify=False)
         r.raise_for_status()
         return r.json()
     except Exception as e:
-        print(f"Error BYMA GET {endpoint}: {e}")
+        print(f"Error POST {endpoint}: {e}")
         return None
 
 def parse_item(item):
-    """Extrae campos clave de un item BYMA (maneja distintas estructuras)."""
-    sym = (item.get("symbol") or item.get("descripcionAbreviada") or "").replace(" - CI", "").replace(" - 48hs", "").strip()
-    price = (item.get("trade") or item.get("ultimo") or item.get("settlPrice") or item.get("c") or 0)
-    change_pct = (item.get("changePercentage") or item.get("variacion") or item.get("pctChange") or 0)
-    try:
-        price = float(price)
-        change_pct = float(change_pct)
-    except:
-        price = 0
-        change_pct = 0
-    return sym, price, change_pct
+    sym = (item.get("symbol") or item.get("descripcionAbreviada") or "")
+    sym = sym.replace(" - CI", "").replace(" - 48hs", "").strip()
+    price = float(item.get("trade") or item.get("ultimo") or item.get("settlPrice") or item.get("c") or 0)
+    chg = float(item.get("changePercentage") or item.get("variacion") or item.get("pctChange") or 0)
+    return sym, price, chg
+
+def get_items(data):
+    if not data:
+        return []
+    if isinstance(data, list):
+        return data
+    return data.get("data", data.get("content", data.get("result", [])))
 
 def get_cotizaciones():
-    """Obtiene cotizaciones de CEDEARs y acciones argentinas."""
     now = time.time()
     if cache["data"] and (now - cache["last_update"]) < cache["ttl"]:
         return cache["data"]
 
     result = {
-        "cedears": [],
-        "acciones": [],
+        "cedears": [], "acciones": [],
         "timestamp": datetime.now().strftime("%H:%M:%S"),
-        "fuente": "Open BYMA Data (20 min delay)",
+        "fuente": "Open BYMA Data",
         "error": None
     }
 
-    # --- CEDEARs ---
-    # Intentar múltiples endpoints
-    cedear_data = None
-    for endpoint in ["cedears", "cedears?limit=100", "leadingCedears"]:
-        cedear_data = fetch_byma_get(endpoint)
-        if cedear_data:
-            break
-    if not cedear_data:
-        cedear_data = fetch_byma_post("cedears", {"excludeZeroPxAndQty": True, "T2": True, "T1": False, "T0": False})
+    # CEDEARs
+    raw = fetch_get("cedears") or fetch_post("cedears", {"excludeZeroPxAndQty": True, "T2": True, "T1": False, "T0": False})
+    for item in get_items(raw):
+        sym, price, chg = parse_item(item)
+        if any(a in sym.upper() for a in ACTIVOS["cedears"]) and price > 0:
+            matched = next((a for a in ACTIVOS["cedears"] if a in sym.upper()), sym)
+            if not any(x["symbol"] == matched for x in result["cedears"]):
+                result["cedears"].append({"symbol": matched, "price": round(price, 2), "change_pct": round(chg, 2)})
 
-    if cedear_data:
-        items = cedear_data if isinstance(cedear_data, list) else cedear_data.get("data", cedear_data.get("content", []))
-        for item in (items or []):
-            sym, price, change_pct = parse_item(item)
-            clean = sym.upper()
-            if any(a in clean for a in ACTIVOS["cedears"]) and price > 0:
-                matched = next((a for a in ACTIVOS["cedears"] if a in clean), clean)
-                if not any(x["symbol"] == matched for x in result["cedears"]):
-                    result["cedears"].append({
-                        "symbol": matched,
-                        "price": round(price, 2),
-                        "change_pct": round(change_pct, 2),
-                    })
+    # Acciones
+    raw2 = fetch_get("equities") or fetch_post("equities", {"excludeZeroPxAndQty": True, "T2": True, "T1": False, "T0": False})
+    for item in get_items(raw2):
+        sym, price, chg = parse_item(item)
+        if any(a in sym.upper() for a in ACTIVOS["acciones"]) and price > 0:
+            matched = next((a for a in ACTIVOS["acciones"] if a in sym.upper()), sym)
+            if not any(x["symbol"] == matched for x in result["acciones"]):
+                result["acciones"].append({"symbol": matched, "price": round(price, 2), "change_pct": round(chg, 2)})
 
-    # --- Acciones MERVAL ---
-    accion_data = None
-    for endpoint in ["equities", "leadingEquities", "bluechips"]:
-        accion_data = fetch_byma_get(endpoint)
-        if accion_data:
-            break
-    if not accion_data:
-        accion_data = fetch_byma_post("equities", {"excludeZeroPxAndQty": True, "T2": True, "T1": False, "T0": False})
-
-    if accion_data:
-        items = accion_data if isinstance(accion_data, list) else accion_data.get("data", accion_data.get("content", []))
-        for item in (items or []):
-            sym, price, change_pct = parse_item(item)
-            clean = sym.upper()
-            if any(a in clean for a in ACTIVOS["acciones"]) and price > 0:
-                matched = next((a for a in ACTIVOS["acciones"] if a in clean), clean)
-                if not any(x["symbol"] == matched for x in result["acciones"]):
-                    result["acciones"].append({
-                        "symbol": matched,
-                        "price": round(price, 2),
-                        "change_pct": round(change_pct, 2),
-                    })
-
-    # Si BYMA no tiene datos (fuera de horario), usar datos de cierre previo de Yahoo Finance
+    # Fallback Yahoo si BYMA no tiene datos
     if not result["cedears"]:
-        result["cedears"] = fetch_yahoo_fallback()
+        print("BYMA sin datos, usando Yahoo Finance...")
+        result["cedears"] = fetch_yahoo()
+        result["fuente"] = "Yahoo Finance (.BA) - BYMA sin datos"
 
     cache["data"] = result
     cache["last_update"] = time.time()
-    print(f"[BYMA] CEDEARs: {len(result['cedears'])} | Acciones: {len(result['acciones'])}")
+    print(f"[OK] CEDEARs:{len(result['cedears'])} Acciones:{len(result['acciones'])} Fuente:{result['fuente']}")
     return result
 
-def fetch_yahoo_fallback():
-    """Fallback: Yahoo Finance para CEDEARs cuando BYMA no tiene datos (fuera de horario)."""
-    # Tickers en Yahoo Finance con sufijo .BA para mercado argentino
-    tickers_ba = {
-        "SPY": "SPY.BA", "QQQ": "QQQ.BA", "MELI": "MELI.BA",
-        "GLD": "GLD.BA", "AAPL": "AAPL.BA", "MSFT": "MSFT.BA",
-    }
+def fetch_yahoo():
+    tickers = {"SPY":"SPY.BA","QQQ":"QQQ.BA","MELI":"MELI.BA","GLD":"GLD.BA","AAPL":"AAPL.BA","MSFT":"MSFT.BA"}
     result = []
-    for sym, ticker in tickers_ba.items():
+    for sym, ticker in tickers.items():
         try:
             url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=1d"
             r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
-            data = r.json()
-            meta = data["chart"]["result"][0]["meta"]
+            meta = r.json()["chart"]["result"][0]["meta"]
             price = meta.get("regularMarketPrice", 0)
-            prev  = meta.get("previousClose", price)
-            change_pct = ((price - prev) / prev * 100) if prev else 0
+            prev = meta.get("previousClose", price)
+            chg = ((price - prev) / prev * 100) if prev else 0
             if price > 0:
-                result.append({
-                    "symbol": sym,
-                    "price": round(price, 2),
-                    "change_pct": round(change_pct, 2),
-                })
+                result.append({"symbol": sym, "price": round(price, 2), "change_pct": round(chg, 2)})
+                print(f"[Yahoo] {sym}: ${price}")
         except Exception as e:
-            print(f"Yahoo fallback error {sym}: {e}")
+            print(f"[Yahoo] Error {sym}: {e}")
     return result
 
 def get_bonos():
-    """Obtiene cotizaciones de bonos soberanos."""
     bonos_target = ["AL30", "AL35", "GD30", "GD35", "AE38"]
     result = []
-    try:
-        data = fetch_byma_get("bonds") or fetch_byma_post("publicBonds", {"excludeZeroPxAndQty": True, "T2": True})
-        if data:
-            items = data if isinstance(data, list) else data.get("data", data.get("content", []))
-            for item in (items or []):
-                sym, price, change_pct = parse_item(item)
-                if any(b in sym.upper() for b in bonos_target) and price > 0:
-                    result.append({
-                        "symbol": sym,
-                        "price": round(price, 2),
-                        "change_pct": round(change_pct, 2),
-                    })
-    except Exception as e:
-        print(f"Error bonos: {e}")
+    raw = fetch_get("bonds") or fetch_post("publicBonds", {"excludeZeroPxAndQty": True, "T2": True})
+    for item in get_items(raw):
+        sym, price, chg = parse_item(item)
+        if any(b in sym.upper() for b in bonos_target) and price > 0:
+            result.append({"symbol": sym, "price": round(price, 2), "change_pct": round(chg, 2)})
     return result
-
-# ============================================================
-# ENDPOINTS
-# ============================================================
 
 @app.route("/")
 def index():
-    return jsonify({
-        "status": "ok",
-        "message": "Scherman Bot API corriendo",
-        "endpoints": ["/api/cotizaciones", "/api/bonos", "/api/health"]
-    })
+    return jsonify({"status": "ok", "message": "Scherman Bot API", "endpoints": ["/api/cotizaciones", "/api/bonos", "/api/health"]})
 
 @app.route("/api/cotizaciones")
 def api_cotizaciones():
-    data = get_cotizaciones()
-    return jsonify(data)
+    return jsonify(get_cotizaciones())
 
 @app.route("/api/bonos")
 def api_bonos():
-    data = get_bonos()
-    return jsonify({"bonos": data, "timestamp": datetime.now().strftime("%H:%M:%S")})
+    return jsonify({"bonos": get_bonos(), "timestamp": datetime.now().strftime("%H:%M:%S")})
 
 @app.route("/api/health")
 def health():
-    return jsonify({
-        "status": "ok",
-        "cache_age_seconds": int(time.time() - cache["last_update"]) if cache["last_update"] else None,
-        "timestamp": datetime.now().isoformat()
-    })
+    return jsonify({"status": "ok", "cache_age_seconds": int(time.time() - cache["last_update"]) if cache["last_update"] else None, "timestamp": datetime.now().isoformat()})
 
 @app.route("/api/all")
 def api_all():
-    cotizaciones = get_cotizaciones()
-    bonos = get_bonos()
-    return jsonify({
-        **cotizaciones,
-        "bonos": bonos
-    })
+    c = get_cotizaciones()
+    return jsonify({**c, "bonos": get_bonos()})
 
 if __name__ == "__main__":
     import os
